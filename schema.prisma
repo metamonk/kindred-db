@@ -1,0 +1,56 @@
+// schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url = env("POSTGRES_PRISMA_URL") // uses connection pooling
+  directUrl = env("POSTGRES_URL_NON_POOLING") // uses a direct connection
+}
+
+model Circle {
+  id                   String    @default(cuid()) @id
+  title                String    @db.VarChar(256)
+  description          String?
+  createdAt            DateTime  @default(now()) @map(name: "created_at")
+  creator              User      @relation(fields: [creatorId], references: [id], name: "CircleCreator")
+  creatorId            String       
+  agreeToTerms         Boolean   @default(false)
+  payPeriod            String
+  currency             String
+  contributionAmount   Decimal   @db.Decimal(10,2)
+  inflationMode        Boolean
+  vaultOption          Int 
+  yield                Float
+  invited              CircleUserMembership[] @relation("InvitedToCircle")
+  members              CircleUserMembership[] @relation("MembersOfCircle")
+}
+
+model User {
+  id            String       @default(cuid()) @id
+  name          String?      @db.VarChar(256)
+  email         String?      @unique
+  phoneNumber   String?      @db.VarChar(15)
+  createdAt     DateTime     @default(now()) @map(name: "created_at")
+  updatedAt     DateTime     @updatedAt @map(name: "updated_at")
+  createdCircles Circle[]    @relation("CircleCreator")
+  invitations   CircleUserMembership[] @relation("InvitedToCircleRelation")
+  memberships   CircleUserMembership[] @relation("MembersOfCircleRelation")
+  @@map(name: "users")
+}
+
+model CircleUserMembership {
+  circleId       String
+  userId         String
+  invited        Boolean     @default(true)
+  joinedAt       DateTime?   @default(now())
+  invitedCircle  Circle      @relation(fields: [circleId], references: [id], name: "InvitedToCircle", map: "invitedCircle_constraint")
+  memberCircle   Circle      @relation(fields: [circleId], references: [id], name: "MembersOfCircle", map: "memberCircle_constraint")
+  invitedUser    User        @relation(fields: [userId], references: [id], name: "InvitedToCircleRelation", map: "invitedUser_constraint")
+  memberUser     User        @relation(fields: [userId], references: [id], name: "MembersOfCircleRelation", map: "memberUser_constraint")
+  
+  @@id([circleId, userId])
+}
+
